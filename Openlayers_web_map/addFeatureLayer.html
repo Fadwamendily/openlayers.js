@@ -1,0 +1,148 @@
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>OpenLayers Tutorials: Display a map</title>
+
+    <style>
+        html,
+        body,
+        #map {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+            color: #323232;
+        }
+
+        #basemaps-wrapper {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        #basemaps {
+            padding: 4px 8px;
+            font-size: 16px;
+        }
+    </style>
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/css/ol.css"
+        type="text/css" />
+    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/build/ol.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ol-mapbox-style@6.1.4/dist/olms.js"></script>
+    <script src="https://unpkg.com/@esri/arcgis-rest-request@4.0.0/dist/bundled/request.umd.js"></script>
+    <script src="https://unpkg.com/ol-popup@4.0.0"></script>
+    <link rel="stylesheet" href="https://unpkg.com/ol-popup@4.0.0/src/ol-popup.css" />
+</head>
+
+<body>
+    <div id="map"></div>
+    <script>
+
+        const map = new ol.Map({ target: "map" });
+        map.setView(
+            new ol.View({
+                center: ol.proj.fromLonLat([-118.805, 34.027]),
+                zoom: 12
+            })
+        );
+        const apiKey = "AAPKc9faa28ebceb4b5882567eb7b2f77455UxcHj537UEvvukqldBDoR8Z0-xmBOcgB6L0CgcJTGZ1UVDRzt5NTdwnvAWGYRVkb";
+
+//Add a point feature layer
+        const basemapId = "ArcGIS:Streets";
+        const basemapURL = "https://basemaps-api.arcgis.com/arcgis/rest/services/styles/" + basemapId + "?type=style&token=" + apiKey;
+        olms(map, basemapURL)
+        
+        //display different layers
+        .then((map) => {
+            const pointLayerName = "Trailheads";
+
+            const pointSource = new ol.source.Vector({
+                format: new ol.format.GeoJSON(),
+                url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/" +
+                    pointLayerName +
+                    "/FeatureServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson"
+            });
+
+            const pointLayer = new ol.layer.Vector({
+                source: pointSource
+            });
+
+            map.addLayer(pointLayer);
+       
+
+//Add a line feature layer
+const lineLayerName = "Trails";
+        const lineLayerURL =
+          "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/" +
+          lineLayerName +
+          "/FeatureServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson";
+
+        const lineSource = new ol.source.Vector({
+          format: new ol.format.GeoJSON(),
+          url: lineLayerURL
+        });
+        const lineLayer = new ol.layer.Vector({
+          source: lineSource
+        });
+        map.addLayer(lineLayer);
+        //Add a polygon feature layer
+
+        const polygonLayerName = "Parks_and_Open_Space";
+        const polygonLayerURL =
+          "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/" +
+          polygonLayerName +
+          "/FeatureServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&f=geojson";
+
+        const polygonSource = new ol.source.Vector({
+          format: new ol.format.GeoJSON(),
+          url: polygonLayerURL
+        });
+        const polygonLayer = new ol.layer.Vector({
+          source: polygonSource
+        });
+        map.getLayers().insertAt(1, polygonLayer);
+        const popup = new Popup();
+        map.addOverlay(popup);
+        map.on("click", (event) => {
+          let feature = map.getFeaturesAtPixel(event.pixel, {
+            layerFilter: (l) => l === pointLayer
+          })[0];
+          if (feature) {
+            popup.show(event.coordinate, `<h4>${feature.get("TRL_NAME")}</h4>${feature.get("PARK_NAME")}`);
+            return;
+          }
+
+          feature = map.getFeaturesAtPixel(event.pixel, {
+            layerFilter: (l) => l === lineLayer
+          })[0];
+          if (feature) {
+            popup.show(
+              event.coordinate,
+              `<h4>${feature.get("TRL_NAME")}</h4>${feature.get("LENGTH_MI")} miles, ${feature.get("ELEV_GAIN")} feet elevation gain.`
+            );
+            return;
+          }
+
+          feature = map.getFeaturesAtPixel(event.pixel, {
+            layerFilter: (l) => l === polygonLayer
+          })[0];
+          if (feature) {
+            popup.show(event.coordinate, `<h4>${feature.get("PARK_NAME")}</h4>${feature.get("MNG_AGENCY")}`);
+            return;
+          }
+          popup.hide();
+        }); 
+
+
+        
+       
+    });
+    </script>
+</body>
+
+</html>

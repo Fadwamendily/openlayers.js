@@ -1,0 +1,171 @@
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Document</title>
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/css/ol.css"
+        type="text/css" />
+    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/build/ol.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ol-mapbox-style@6.1.4/dist/olms.js"></script>
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/css/ol.css"
+        type="text/css" />
+    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/build/ol.js"></script>
+
+    <script src="https://cdn.jsdelivr.net/npm/ol-mapbox-style@6.1.4/dist/olms.js"></script>
+
+
+</head>
+
+<body>
+    <div id="map"></div>
+
+    <script>
+
+        const map = new ol.Map({ target: "map" });
+        map.setView(
+            new ol.View({
+                center: ol.proj.fromLonLat([-118.805, 34.027]),
+                zoom: 12
+            })
+        );
+
+        const apiKey = "AAPKc9faa28ebceb4b5882567eb7b2f77455UxcHj537UEvvukqldBDoR8Z0-xmBOcgB6L0CgcJTGZ1UVDRzt5NTdwnvAWGYRVkb";
+
+        const basemapId = "6976148c11bd497d8624206f9ee03e30"; // Custom vector tile style
+
+        const basemapURL = "https://basemaps-api.arcgis.com/arcgis/rest/services/styles/" + basemapId + "?type=style&token=" + apiKey;
+
+        olms(map, basemapURL)
+            .then(function (map) {
+                //Style trailheads with a hiker image and labels
+
+                const trailheadStyle = function (feature) {
+                    return new ol.style.Style({
+                        image: new ol.style.Icon({
+                            src: "http://static.arcgis.com/images/Symbols/NPS/npsPictograph_0231b.png",
+                            scale: 0.25
+                        }),
+
+                        text: new ol.style.Text({
+                            text: feature.get("TRL_NAME"),
+                            font: "italic 12px sans-serif",
+                            offsetX: 10,
+                            textAlign: "left",
+                            fill: new ol.style.Fill({
+                                color: "#FFFFFF"
+                            }),
+
+                            stroke: new ol.style.Stroke({
+                                color: "#5E8D74",
+                                width: 3
+                            })
+                        })
+
+                    });
+                };
+                //Add the Trailheads feature layer to the map
+
+                const trailheadsLayerName = "Trailheads";
+                const trailheadsLayerURL =
+                    "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/" +
+                    trailheadsLayerName +
+                    "/FeatureServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&f=pgeojson";
+
+                const trailheadsLayer = new ol.layer.Vector({
+                    source: new ol.source.Vector({
+                        format: new ol.format.GeoJSON(),
+                        url: trailheadsLayerURL
+                    }),
+
+                    style: trailheadStyle,
+                    declutter: true
+                });
+
+                map.addLayer(trailheadsLayer)
+
+                //Style trail width by elevation gain
+
+                const trailStyle = function (feature) {
+                    return new ol.style.Style({
+                        stroke: new ol.style.Stroke({
+                            color: "#BA55D3",
+                            width: 3 + (4 * feature.get("ELEV_GAIN")) / 2300
+                        })
+                    });
+                };
+                const trailsLayerName = "Trails";
+                const trailsLayerURL =
+                    "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/" +
+                    trailsLayerName +
+                    "/FeatureServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&f=pgeojson";
+                const trailsLayer = new ol.layer.Vector({
+                    source: new ol.source.Vector({
+                        format: new ol.format.GeoJSON(),
+                        url: trailsLayerURL
+                    }),
+
+                    style: trailStyle
+                });
+                map.getLayers().insertAt(1, trailsLayer);
+
+
+                //Add a filtered bike-only trails layer
+                const bikeTrailsStyle = function (feature) {
+                    if (feature.get("USE_BIKE") === "Yes") {
+                        return new ol.style.Style({
+
+                            stroke: new ol.style.Stroke({
+                                lineDash: [1, 4],
+                                color: "white",
+                                width: 2
+                            })
+                        });
+                    }
+                };
+                const bikeTrailsLayer = new ol.layer.Vector({
+                    source: trailsLayer.getSource(),
+                    style: bikeTrailsStyle
+                });
+                map.getLayers().insertAt(2, bikeTrailsLayer);
+
+                //Style a polygon layer
+                const parksStyle = function (feature) {
+                    const type = feature.get("TYPE");
+                    const colorTable = {
+                        "Natural Areas": "#9E559C",
+                        "Regional Open Space": "#A7C636",
+                        "Local Park": "#149ECE",
+                        "Regional Recreation Park": "#ED5151"
+                    };
+
+                    return new ol.style.Style({
+                        fill: new ol.style.Fill({
+                            color: colorTable[feature.get("TYPE")] || "transparent"
+                        })
+                    });
+                };
+                const parksLayerName = "Parks_and_Open_Space";
+                const parksLayerURL =
+                    "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/" +
+                    parksLayerName +
+                    "/FeatureServer/0/query?where=1%3D1&outFields=*&returnGeometry=true&f=pgeojson";
+                const parksLayer = new ol.layer.Vector({
+                    source: new ol.source.Vector({
+                        format: new ol.format.GeoJSON(),
+                        url: parksLayerURL
+                    }),
+                    opacity: 0.2,
+                    style: parksStyle
+                });
+                map.getLayers().insertAt(1, parksLayer);
+
+            })
+
+    </script>
+</body>
+
+</html>

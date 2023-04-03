@@ -1,0 +1,74 @@
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>OpenLayers Tutorials: Display a map</title>
+
+    <style>
+        html,
+        body,
+        #map {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+            color: #323232;
+        }
+
+        #basemaps-wrapper {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        #basemaps {
+            padding: 4px 8px;
+            font-size: 16px;
+        }
+    </style>
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/css/ol.css"
+        type="text/css" />
+    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/build/ol.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ol-mapbox-style@6.1.4/dist/olms.js"></script>
+    <script src="https://unpkg.com/@esri/arcgis-rest-request@4.0.0/dist/bundled/request.umd.js"></script>
+    <script src="https://unpkg.com/ol-popup@4.0.0"></script>
+    <link rel="stylesheet" href="https://unpkg.com/ol-popup@4.0.0/src/ol-popup.css" />
+</head>
+
+<body>
+    <div id="map"></div>
+    <script>
+
+        const map = new ol.Map({ target: "map" });
+        map.setView(
+            new ol.View({
+                center: ol.proj.fromLonLat([-118.805, 34.027]),
+                zoom: 12
+            })
+        );
+        const apiKey = "AAPKc9faa28ebceb4b5882567eb7b2f77455UxcHj537UEvvukqldBDoR8Z0-xmBOcgB6L0CgcJTGZ1UVDRzt5NTdwnvAWGYRVkb";
+
+        const basemapId = "ArcGIS:Streets";
+        const basemapURL = "https://basemaps-api.arcgis.com/arcgis/rest/services/styles/" + basemapId + "?type=style&token=" + apiKey;
+        olms(map, basemapURL)
+
+            .then((map) => {
+
+                const parcelsSource = new ol.source.VectorTile({
+                    format: new ol.format.MVT(),
+                    url: `https://vectortileservices3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/Santa_Monica_Mountains_Parcels_VTL/VectorTileServer/tile/{z}/{y}/{x}.pbf`
+                });
+                const parcelsLayer = new ol.layer.VectorTile({
+                    source: parcelsSource
+                });
+                map.addLayer(parcelsLayer);
+
+            });
+    </script>
+</body>
+
+</html>

@@ -1,0 +1,152 @@
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>OpenLayers Tutorials: Display a map</title>
+
+    <style>
+        html,
+        body,
+        #map {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+            color: #323232;
+        }
+
+        #basemaps-wrapper {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        #basemaps {
+            padding: 4px 8px;
+            font-size: 16px;
+        }
+
+        #query-select {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+            padding: 4px 8px;
+            font-size: 16px;
+            border-radius: 0;
+            /* Causes more uniform appearance across browsers. */
+        }
+    </style>
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/css/ol.css"
+        type="text/css" />
+    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/build/ol.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ol-mapbox-style@6.1.4/dist/olms.js"></script>
+    <script src="https://unpkg.com/@esri/arcgis-rest-request@4.0.0/dist/bundled/request.umd.js"></script>
+    <script src="https://unpkg.com/@esri/arcgis-rest-request@4.0.0/dist/bundled/request.umd.js"></script>
+    <script
+        src="https://unpkg.com/@esri/arcgis-rest-feature-service@4.0.0/dist/bundled/feature-service.umd.js"></script>
+    <script src="https://unpkg.com/ol-popup@4.0.0"></script>
+    <link rel="stylesheet" href="https://unpkg.com/ol-popup@4.0.0/src/ol-popup.css" />
+</head>
+
+<body>
+    <div id="map"></div>
+    <script>
+
+        const map = new ol.Map({ target: "map" });
+        map.setView(
+            new ol.View({
+                center: ol.proj.fromLonLat([-118.805, 34.027]),
+                zoom: 12
+            })
+        );
+        const apiKey = "AAPKc9faa28ebceb4b5882567eb7b2f77455UxcHj537UEvvukqldBDoR8Z0-xmBOcgB6L0CgcJTGZ1UVDRzt5NTdwnvAWGYRVkb";
+        const basemapId = "ArcGIS:Streets";
+        const basemapURL = "https://basemaps-api.arcgis.com/arcgis/rest/services/styles/" + basemapId + "?type=style&token=" + apiKey;
+
+        olms(map, basemapURL)
+            .then((map) => {
+
+                const parcelLayer = new ol.layer.Vector({
+                    source: new ol.source.Vector(),
+                    style: new ol.style.Style({
+                        stroke: new ol.style.Stroke({
+                            color: "black"
+                        }),
+                        fill: new ol.style.Fill({
+                            color: "hsl(200,80%,50%)"
+                        })
+                    })
+                });
+                const interactionLayer = new ol.layer.Vector({
+                    source: new ol.source.Vector()
+                });
+
+                map.addLayer(parcelLayer);
+                map.addLayer(interactionLayer);
+                const drawInteraction = new ol.interaction.Draw({
+                    source: interactionLayer.getSource(),
+                    type: "Polygon",
+                    stopClick: true // don't fire "click" events (needed later)
+                });
+
+                map.addInteraction(drawInteraction);
+                drawInteraction.on("drawend", (e) => {
+                    const feature = new ol.format.EsriJSON().writeFeatureObject(e.feature, {
+                        featureProjection: map.getView().getProjection()
+                    });
+
+                    executeQuery(feature.geometry);
+                    drawInteraction.setActive(false);
+
+                });
+                function executeQuery(geometry) {
+
+                    arcgisRest
+                        .queryFeatures({
+                            url: "https://services3.arcgis.com/GVgbJbqm8hXASVYi/arcgis/rest/services/LA_County_Parcels/FeatureServer/0",
+                            geometry: geometry,
+                            geometryType: "esriGeometryPolygon",
+                            spatialRel: "esriSpatialRelIntersects",
+                            f: "json",
+                            returnGeometry: true
+                        })
+                        .then((response) => {
+                            const features = new ol.format.EsriJSON().readFeatures(response);
+                            parcelLayer.getSource().addFeatures(features);
+                        });
+
+                }
+                const popup = new Popup();
+                map.addOverlay(popup);
+                map.on("click", (event) => {
+                    let parcel = map.getFeaturesAtPixel(event.pixel, {
+                        layerFilter: (l) => l === parcelLayer
+                    })[0];
+                    if (parcel) {
+                        // user clicked on a parcel to see more information about it
+                        const message =
+                            `<b>Parcel ${parcel.get("APN")}</b>` +
+                            `<br>Type: ${parcel.get("UseType")} <br>` +
+                            `Land value: ${parcel.get("Roll_LandValue")} <br>` +
+                            `Tax Rate City: ${parcel.get("TaxRateCity")}`;
+
+                        popup.show(event.coordinate, message);
+                        drawInteraction.abortDrawing();
+                    } else {
+                        // user clicked elsewhere on the map to reset
+                        popup.hide();
+                        parcelLayer.getSource().clear();
+                        interactionLayer.getSource().clear();
+                        drawInteraction.setActive(true);
+                    }
+                });
+            });
+
+    </script>
+</body>
+
+</html>

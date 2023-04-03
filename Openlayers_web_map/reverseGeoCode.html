@@ -1,0 +1,86 @@
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>OpenLayers Tutorials: Display a map</title>
+
+    <style>
+        html,
+        body,
+        #map {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+            color: #323232;
+        }
+
+        #basemaps-wrapper {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        #basemaps {
+            padding: 4px 8px;
+            font-size: 16px;
+        }
+    </style>
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/css/ol.css"
+        type="text/css" />
+    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/build/ol.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ol-mapbox-style@6.1.4/dist/olms.js"></script>
+    <script src="https://unpkg.com/@esri/arcgis-rest-request@4.0.0/dist/bundled/request.umd.js"></script>
+    <script src="https://unpkg.com/@esri/arcgis-rest-geocoding@4.0.0/dist/bundled/geocoding.umd.js"></script>
+    <script src="https://unpkg.com/ol-popup@4.0.0"></script>
+    <link rel="stylesheet" href="https://unpkg.com/ol-popup@4.0.0/src/ol-popup.css" />
+</head>
+
+<body>
+    <div id="map"></div>
+
+    <script>
+
+        const map = new ol.Map({ target: "map" });
+        map.setView(
+            new ol.View({
+                center: ol.proj.fromLonLat([2.3522, 48.8566]), // Paris
+                zoom: 12
+            })
+        );
+        const apiKey = "AAPKc9faa28ebceb4b5882567eb7b2f77455UxcHj537UEvvukqldBDoR8Z0-xmBOcgB6L0CgcJTGZ1UVDRzt5NTdwnvAWGYRVkb";
+        const basemapId = "ArcGIS:Navigation";
+        const basemapURL = "https://basemaps-api.arcgis.com/arcgis/rest/services/styles/" + basemapId + "?type=style&token=" + apiKey;
+        olms(map, basemapURL)
+        const popup = new Popup();
+        map.addOverlay(popup);
+        map.on("click", (e) => {
+
+            const coords = ol.proj.transform(e.coordinate, "EPSG:3857", "EPSG:4326");
+            const authentication = arcgisRest.ApiKeyManager.fromKey(apiKey);
+
+            arcgisRest
+                .reverseGeocode(coords, {
+                    authentication
+                })
+                .then((result) => {
+            const message =
+              `${result.address.LongLabel}<br>` + `${result.location.x.toLocaleString()}, ${result.location.y.toLocaleString()}`;
+
+            popup.show(e.coordinate, message);
+          })
+          
+          .catch((error) => {
+            popup.hide();
+            console.error(error);
+          });
+        });
+
+    </script>
+</body>
+
+</html>

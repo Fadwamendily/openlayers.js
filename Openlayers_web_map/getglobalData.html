@@ -1,0 +1,111 @@
+<html>
+
+<head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="initial-scale=1, maximum-scale=1, user-scalable=no" />
+    <title>OpenLayers Tutorials: Display a map</title>
+
+    <style>
+        html,
+        body,
+        #map {
+            padding: 0;
+            margin: 0;
+            height: 100%;
+            width: 100%;
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 14px;
+            color: #323232;
+        }
+
+        #basemaps-wrapper {
+            position: absolute;
+            top: 20px;
+            right: 20px;
+        }
+
+        #basemaps {
+            padding: 4px 8px;
+            font-size: 16px;
+        }
+
+        #map canvas {
+            cursor: crosshair;
+        }
+
+        .ol-popup {
+            width: 250px;
+        }
+    </style>
+    <link rel="stylesheet"
+        href="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/css/ol.css"
+        type="text/css" />
+    <script src="https://cdn.jsdelivr.net/gh/openlayers/openlayers.github.io@master/en/v6.15.1/build/ol.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/ol-mapbox-style@6.1.4/dist/olms.js"></script>
+    <script src="https://unpkg.com/@esri/arcgis-rest-request@4.0.0/dist/bundled/request.umd.js"></script>
+    <script src="https://unpkg.com/ol-popup@4.0.0"></script>
+
+    <link rel="stylesheet" href="https://unpkg.com/ol-popup@4.0.0/src/ol-popup.css" />
+    <script src="https://unpkg.com/@esri/arcgis-rest-demographics@4.0.0/dist/bundled/demographics.umd.js"></script>
+</head>
+
+<body>
+    <div id="map"></div>
+
+    <script>
+
+        const map = new ol.Map({ target: "map" });
+        map.setView(
+            new ol.View({
+                center: ol.proj.fromLonLat([-86.7679, 36.1745]),
+                zoom: 12
+            })
+        );
+        const apiKey = "AAPKc0cc95ced08144ca9c3f5417e6a712bfvdu8U5SnBz2uDIsLDmcCKkguoSDpkkoZzDiwfS3OvhF2eoN5pLeXMU3ZbTsCcOXk";
+        const basemapId = "ArcGIS:Navigation";
+        const basemapURL = "https://basemaps-api.arcgis.com/arcgis/rest/services/styles/" + basemapId + "?type=style&token=" + apiKey;
+        olms(map, basemapURL)
+            .then(function (map) {
+                const popup = new Popup();
+                map.addOverlay(popup);
+
+                map.on("click", (event) => {
+
+                    const lonLat = ol.proj.toLonLat(event.coordinate);
+                    const authentication = arcgisRest.ApiKeyManager.fromKey(apiKey);
+
+                    arcgisRest
+                        .queryDemographicData({
+                            studyAreas: [{ geometry: { x: lonLat[0], y: lonLat[1] } }],
+                            dataCollections: ["KeyGlobalFacts"],
+                            authentication: authentication
+                        })
+                        .then((response) => {
+
+                            const data = document.getElementById("data");
+
+                            const featureSet = response.results[0].value.FeatureSet;
+                            let message;
+                            if (featureSet.length > 0 && featureSet[0].features.length > 0) {
+                                const attributes = featureSet[0].features[0].attributes;
+                                message =
+                                    `<b>Data for a 1 mile search radius</b>` +
+                                    [
+                                        `<br>Population: ${attributes.TOTPOP}`,
+                                        `Males: ${attributes.TOTMALES} `,
+                                        `Females: ${attributes.TOTFEMALES}`,
+                                        `Average Household Size: ${attributes.AVGHHSZ}`
+                                    ].join("<br>");
+                            } else {
+                                message = "Data not available for this location.";
+                            }
+                            popup.show(event.coordinate, message);
+                        });
+                });
+
+            });
+
+    </script>
+</body>
+
+</html>
